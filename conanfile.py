@@ -131,6 +131,8 @@ class OpenstudiorubyConan(ConanFile):
             self.output.error("Globbing: {}".format(glob_pattern))
             raise ConanException("Didn't find the libraries!")
 
+        # We don't want to link to both dynamic and static ruby on Windows.
+        libs.remove("x64-vcruntime140-ruby250.lib")
         self.output.success("Found {} libs".format(len(libs)))
 
         # Relative to package folder: no need unless explicitly setting glob
