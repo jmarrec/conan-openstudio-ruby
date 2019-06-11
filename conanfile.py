@@ -1,6 +1,7 @@
 import sys
 import os
 import glob as gb
+import re
 from conans import ConanFile, CMake
 from conans.errors import ConanException
 
