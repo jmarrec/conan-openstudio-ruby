@@ -131,11 +131,6 @@ class OpenstudiorubyConan(ConanFile):
             self.output.error("Globbing: {}".format(glob_pattern))
             raise ConanException("Didn't find the libraries!")
 
-        # We don't want to link to both dynamic and static ruby on Windows.
-        windows_dynamic_ruby = "x64-vcruntime140-ruby250.lib"
-        
-        if libs.count(windows_dynamic_ruby) > 0:
-            libs.remove(windows_dynamic_ruby)
             
         self.output.success("Found {} libs".format(len(libs)))
 
@@ -143,9 +138,9 @@ class OpenstudiorubyConan(ConanFile):
         # to package_folder above
         # libs = [os.path.relpath(p, start=self.package_folder) for p in libs]
 
-        # Keep only the names
-        self.cpp_info.libs = [os.path.basename(x) for x in libs]
-
+        # Keep only the names, remove the non-static VS libs
+        self.cpp_info.libs = [os.path.basename(x) for x in libs if not re.match('x64-vcruntime.*-ruby[0-9]+.lib', x) ]      
+        
         # self.cpp_info.libdirs = ['lib', 'lib/ext', 'lib/enc']
         # Equivalent automatic detection
         # list of unique folders
