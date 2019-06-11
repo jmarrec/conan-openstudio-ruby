@@ -140,7 +140,7 @@ class OpenstudiorubyConan(ConanFile):
         # libs = [os.path.relpath(p, start=self.package_folder) for p in libs]
 
         # Keep only the names, remove the non-static VS libs
-        self.cpp_info.libs = [os.path.basename(x) for x in libs if not re.match('x64-vcruntime.*-ruby[0-9]+.lib', x) ]      
+        self.cpp_info.libs = [os.path.basename(x) for x in libs if not re.match('.*x64-vcruntime.*-ruby[0-9]+.lib', x) ]      
         
         # self.cpp_info.libdirs = ['lib', 'lib/ext', 'lib/enc']
         # Equivalent automatic detection
