@@ -132,7 +132,6 @@ class OpenstudiorubyConan(ConanFile):
             self.output.error("Globbing: {}".format(glob_pattern))
             raise ConanException("Didn't find the libraries!")
 
-            
         self.output.success("Found {} libs".format(len(libs)))
 
         # Relative to package folder: no need unless explicitly setting glob
@@ -140,8 +139,10 @@ class OpenstudiorubyConan(ConanFile):
         # libs = [os.path.relpath(p, start=self.package_folder) for p in libs]
 
         # Keep only the names, remove the non-static VS libs
-        self.cpp_info.libs = [os.path.basename(x) for x in libs if not re.match('.*x64-vcruntime.*-ruby[0-9]+.lib', x) ]      
-        
+        non_stat_re = re.compile(r'.*x64-vcruntime.*-ruby[0-9]+.lib')
+        self.cpp_info.libs = [os.path.basename(x) for x in libs
+                              if not non_stat_re.match(x)]
+
         # self.cpp_info.libdirs = ['lib', 'lib/ext', 'lib/enc']
         # Equivalent automatic detection
         # list of unique folders
