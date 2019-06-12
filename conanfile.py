@@ -137,11 +137,15 @@ class OpenstudiorubyConan(ConanFile):
             non_stat_re = re.compile(r'x64-vcruntime[0-9]+-ruby[0-9]+\.lib')
             exclude_libs = [x for x in libs
                             if non_stat_re.search(x)]
-            print("Excluding {} non-static libs: {}".format(len(exclude_libs),
-                                                            exclude_libs))
+            if not exclude_libs:
+                self.output.error("Did not find any static lib to exclude, "
+                                  "expected at least one on Windows")
+            else:
+                print("Excluding {} non-static libs: "
+                      "{}".format(len(exclude_libs), exclude_libs))
 
-            # Now we actually exclude it
-            libs = list(set(libs) - set(exclude_libs))
+                # Now we actually exclude it
+                libs = list(set(libs) - set(exclude_libs))
 
         # Relative to package folder: no need unless explicitly setting glob
         # to package_folder above
