@@ -2,7 +2,7 @@ import sys
 import os
 import glob as gb
 import re
-from conans import ConanFile, CMake
+from conans import ConanFile, AutoToolsBuildEnvironment, tools
 from conans.errors import ConanException
 
 
@@ -11,22 +11,56 @@ class OpenstudiorubyConan(ConanFile):
     version = "2.5.5"
     license = "<Put the package license here>"
     author = "<Put your name here> <And your email here>"
-    url = "<Package recipe repository url here, for issues about the package>"
-    description = "<Description of Openstudioruby here>"
-    topics = ("<Put some tag here>", "<here>", "<and here>")
+    url = "https://github.com/NREL/conan-openstudio-ruby/"
+    description = "A conan package to build ruby for OpenStudio."
+    topics = ("openstudio", "ruby", "commercialbuildings")
     settings = "os", "compiler", "build_type", "arch"
     exports_sources = "*"
-    generators = "cmake"
+    # generators = "cmake"
 
-    options = {
-        'with_libyaml': [True, False],
-        'with_libffi': [True, False],
-        # GDBM depends on readline
-        'with_gdbm': [True, False],
-        # Readline doesn't work for MSVC currently
-        'with_readline': [True, False],
-    }
-    default_options = {x: True for x in options}
+    extensions = (
+        "zlib",
+        "openssl",
+        "libyaml",
+        "libffi",
+        #"dbm",
+        "gdbm",
+        "readline",
+        #"pty",
+        #"syslog",
+    )
+    options = dict(
+        {
+            "shared": [True, False],
+            # "fPIC": [True, False],
+        },
+        **{"with_" + extension: [True, False] for extension in extensions}
+    )
+    default_options = dict(
+        {
+            'shared': False,
+            # 'fPIC': True,
+            'with_libyaml': True,
+            'with_libffi': True,
+            'with_gdbm': True,
+            'with_readline': True,
+            'with_zlib': True,
+            'with_openssl': True,
+            #'with_dbm': False,
+            #'with_pty': False,
+            #'with_syslog': False,
+        },
+        # **{"with_" + extension: True for extension in extensions}
+    )
+
+    @property
+    def _source_subfolder(self):
+        return "source_subfolder"
+
+    @property
+    def _build_subfolder(self):
+        return "build_subfolder"
+
 
     def configure(self):
         if (self.settings.os == "Windows" and self.settings.compiler == "Visual Studio"):
@@ -73,28 +107,99 @@ class OpenstudiorubyConan(ConanFile):
         """
         self.build_requires("ruby_installer/2.5.5@bincrafters/stable")
         self.build_requires("bison_installer/3.3.2@bincrafters/stable")
+        if tools.os_info.is_windows:
+            self.build_requires("msys2_installer/20161025@bincrafters/stable")
+            # We need sed and bison really...
+
+    def source(self):
+        """
+        Download and patch the source
+        """
+        # eg: https://cache.ruby-lang.org/pub/ruby/2.5/ruby-2.5.5.tar.gz
+        url = "https://cache.ruby-lang.org/pub/ruby/{0}/ruby-{1}.tar.gz"
+        url = url.format(self.version[:self.version.rfind('.')], self.version)
+        sha256 = '28a945fdf340e6ba04fc890b98648342e3cccfd6d223a48f3810572f11b2514c'
+        tools.get(url, sha256=sha256)
+        extracted_dir = "ruby-" + self.version
+        os.rename(extracted_dir, self._source_subfolder)
+
+        # Same as patch -p1
+        tools.patch(base_path=self._source_subfolder,
+                    patch_file="Ruby.patch", strip=0)
+        if self.settings.os == 'Windows':
+            tools.patch(base_path=self._source_subfolder,
+                        patch_file='Ruby.win.patch', strip=0)
+
+        # The 'nodynamic' modules patch fails to build in any way on Unix,
+        # with 2.5.x, so we aren't using it (at the moment anyhow)
+        tools.patch(base_path=self._source_subfolder,
+                    patch_file='Ruby.nodynamic.patch', strip=0)
+
+    def build_configure(self):
+        conf_args = [
+            "--disable-install-doc"
+        ]
+        for ext in self.extensions:
+            if getattr(self.options, "with_" + ext):
+                conf_args.append("--with-{}".format(ext))
+            else:
+                # conf_args.append("--without-{}".format(ext))
+                pass
+
+        if self.options.shared:
+            conf_args.append("--enable-shared")
+            conf_args.append("--disable-static")
+            conf_args.append("--disable-install-static-library")
+        else:
+            #conf_args.append("--disable-shared")
+            #conf_args.append("--enable-static")
+            conf_args.append("--with-static-linked-ext")
+
+        with tools.chdir(self._source_subfolder):
+            if self.settings.compiler == "Visual Studio":
+                with tools.environment_append({"INCLUDE": self.deps_cpp_info.include_paths,
+                                               "LIB": self.deps_cpp_info.lib_paths}):
+                    if self.settings.arch == "x86":
+                        target = "i686-mswin32"
+                    elif self.settings.arch == "x86_64":
+                        target = "x64-mswin64"
+                    else:
+                        raise ConanException("Invalid arch")
+                    conf_args.append('--prefix="{}"'.format(self.package_folder))
+                    conf_args.append("--target={}".format(target))
+                    self.run("{c} {args}".format(
+                        c=os.path.join("win32", "configure.bat"),
+                        args=" ".join(conf_args)))
+                    self.run("nmake")
+                    self.run("nmake install")
+            else:
+                win_bash = tools.os_info.is_windows
+                autotools = AutoToolsBuildEnvironment(self, win_bash=win_bash)
+                # Remove our libs; Ruby doesn't like Conan's help
+                autotools.libs = []
+
+                autotools.configure(args=conf_args)
+                autotools.make()
+                autotools.install()
 
     def build(self):
-        """
-        This method is used to build the source code of the recipe using the
-        CMakeLists.txt
-        """
-        cmake = CMake(self)
-        cmake.definitions["INTEGRATED_CONAN"] = False
-        cmake.configure()
-
-        # On Windows the build never succeeds on the first try. Much effort
-        # was spent trying to figure out why. This is the compromise:
-        # we just build twice.
-        if self.settings.os == "Windows":
-            try:
-                cmake.build()
-            except:
-                # total hack to allow second attempt at building
-                self.should_build = True
-                cmake.build()
+        if tools.os_info.is_windows:
+            msys_bin = self.deps_env_info["msys2_installer"].MSYS_BIN
+            # Make sure that Ruby is first in the path order
+            path = self.deps_env_info["ruby_installer"].path + [msys_bin]
+            # tools.environment_append will override if value is a string and
+            # prepend if a list, so we are PREPENDING to the path which is what
+            # we want
+            with tools.environment_append({"PATH": path,
+                                           "CONAN_BASH_PATH": os.path.join(msys_bin, "bash.exe")}):
+                if self.settings.compiler == "Visual Studio":
+                    with tools.vcvars(self.settings):
+                        self.build_configure()
+                else:
+                    self.build_configure()
         else:
-            cmake.build()
+            self.build_configure()
+
 
     def package(self):
         """
