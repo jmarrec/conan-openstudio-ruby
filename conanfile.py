@@ -168,21 +168,35 @@ class OpenstudiorubyConan(ConanFile):
                 ext_root_path = self.deps_cpp_info[ext_name].rootpath
                 conf_args.append("--with-{e}-dir={r}".format(e=ext,
                                                              r=ext_root_path))
-                ext_libs += self.deps_cpp_info[ext_name].lib_paths
+
+                if self.settings.compiler == "Visual Studio":
+
+                    ext_libs_paths = self.deps_cpp_info[ext_name].lib_paths
+                    if len(ext_libs_paths) != 1:
+                        raise ConanException("Expected only 1 lib path for {}, "
+                                             "found {}".format(ext_name,
+                                                               len(ext_libs_paths)))
+                    map_to_ext = {'OpenSSL': ['libcrypto.lib', 'libssl.lib'],
+                                  'zlib': ['zlib.lib'],
+                                  'libyaml': ['yaml.lib'],
+                                  'libffi': ['libffi.lib']
+                                 }
+                    for libname in map_to_ext[ext_name]:
+                        ext_libs.append(os.path.join(ext_libs_paths[0], libname))
             else:
                 # conf_args.append("--without-{}".format(ext))
                 pass
 
         with tools.chdir(self._source_subfolder):
             if self.settings.compiler == "Visual Studio":
-
+                self.output.error("EXTLIBS={}".format(" ".join(ext_libs)))
                 with tools.environment_append(
                     {
                         "INCLUDE": self.deps_cpp_info.include_paths,
                         "LIB": self.deps_cpp_info.lib_paths,
                         "CL": "/MP",
-                        "CFLAGS": ['-wd4996', '-we4028', '-we4142', '-Zm600',
-                                   '-Zi'],
+                        #"CFLAGS": ['-wd4996', '-we4028', '-we4142', '-Zm600',
+                        #           '-Zi'],
                         "EXTLIBS": " ".join(ext_libs),
                     }):
                     if self.settings.arch == "x86":
@@ -209,7 +223,11 @@ class OpenstudiorubyConan(ConanFile):
                     self.run("{c} {args}".format(
                         c=os.path.join("win32", "configure.bat"),
                         args=" ".join(conf_args)))
-                    self.run("nmake /k")
+                    try:
+                        self.run("nmake /k")
+                    except:
+                        self.output.warn("======= COMPILE 2ND TIME ========")
+                        self.run("nmake /k")
                     self.run("nmake /k install-nodoc")
             else:
                 self.output.warn("conf_args = {}".format(conf_args))
