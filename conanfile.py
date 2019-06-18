@@ -168,7 +168,7 @@ class OpenstudiorubyConan(ConanFile):
                 ext_root_path = self.deps_cpp_info[ext_name].rootpath
                 conf_args.append("--with-{e}-dir={r}".format(e=ext,
                                                              r=ext_root_path))
-                ext_libs.append(self.deps_cpp_info[ext_name].lib_paths)
+                ext_libs += self.deps_cpp_info[ext_name].lib_paths
             else:
                 # conf_args.append("--without-{}".format(ext))
                 pass
@@ -183,7 +183,7 @@ class OpenstudiorubyConan(ConanFile):
                         "CL": "/MP",
                         "CFLAGS": ['-wd4996', '-we4028', '-we4142', '-Zm600',
                                    '-Zi'],
-                        "EXTLIBS": " ".join(ext_libs)
+                        "EXTLIBS": " ".join(ext_libs),
                     }):
                     if self.settings.arch == "x86":
                         target = "i686-mswin32"
