@@ -83,6 +83,7 @@ class OpenstudiorubyConan(ConanFile):
         if self.options.with_zlib:
             self.requires("zlib/1.2.11@conan/stable")
             self.options["zlib"].shared = self.options.shared
+            self.options["zlib"].minizip = True
 
         if self.options.with_libyaml:
             self.requires("libyaml/0.2.2@bincrafters/stable")
@@ -147,16 +148,16 @@ class OpenstudiorubyConan(ConanFile):
             "--disable-install-doc"
         ]
 
-        if self.options.shared:
-            conf_args.append("--enable-shared")
-            conf_args.append("--disable-static")
-            conf_args.append("--disable-install-static-library")
-        else:
-            conf_args.append("--disable-shared")
-            conf_args.append("--enable-static")
-            conf_args.append("--with-static-linked-ext")
+        # if self.options.shared:
+            # conf_args.append("--enable-shared")
+            # conf_args.append("--disable-static")
+            # conf_args.append("--disable-install-static-library")
+        # else:
+            # conf_args.append("--disable-shared")
+            # conf_args.append("--enable-static")
+            # conf_args.append("--with-static-linked-ext")
 
-        # conf_args.append("--with-static-linked-ext")
+        conf_args.append("--with-static-linked-ext")
 
         # TODO: For windows, not sure yet if needed
         ext_libs = []
@@ -258,13 +259,34 @@ class OpenstudiorubyConan(ConanFile):
         else:
             self.build_configure()
 
+    def _get_libext(self):
+        # We'll glob for this extension
+        if self.settings.os == "Windows":
+            return "lib"
+        else:
+            return "a"
 
     def package(self):
         """
         The actual creation of the package, once that it is built, is done
         here by copying artifacts from the build folder to the package folder
         """
-        self.copy("*", src="Ruby-prefix/src/Ruby-install", keep_path=True)
+        # self.copy("*", src="Ruby-prefix/src/Ruby-install", keep_path=True)
+
+        # We'll glob for this extension
+        libext = _get_libext(self)
+
+        if self.settings.os == "Windows":
+            self.copy("encinit.c", src="enc/", dst="include/")
+        else:
+            # Delete the test folders
+            tools.remove("ext/-test-")
+
+            self.copy("rbconfig.rb", src="", dst='lib/ruby/2.5.0')
+
+        # mkdir needed?
+        self.copy("*.{}".format(libext), src="ext/", dst="lib/ext")
+        self.copy("*.{}".format(libext), src="enc/", dst="lib/enc")
 
     def _find_config_header(self):
         """
@@ -305,10 +327,7 @@ class OpenstudiorubyConan(ConanFile):
         so that it can work with OpenStudio
         """
         # We'll glob for this extension
-        if self.settings.os == "Windows":
-            libext = "lib"
-        else:
-            libext = "a"
+        libext = _get_libext(self)
 
         # Note: If you don't specify explicitly self.package_folder, "."
         # actually already resolves to it when package_info is run
