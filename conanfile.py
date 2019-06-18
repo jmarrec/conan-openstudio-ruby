@@ -185,8 +185,10 @@ class OpenstudiorubyConan(ConanFile):
                         raise ConanException("Invalid arch")
                     conf_args.append('--prefix="{}"'.format(self.package_folder))
                     conf_args.append("--target={}".format(target))
-                    base_exe = "{}/bin/ruby.exe".format(
-                        self.deps_cpp_info['ruby_installer'].rootpath)
+                    base_exe = os.path.join(
+                        self.deps_cpp_info['ruby_installer'].rootpath,
+                        "bin", "ruby.exe"
+                    )
                     self.output.warn("Base ruby exe: {}".format(base_exe))
                     conf_args.append("--with-baseruby={}".format(base_exe))
                     # TODO: --without-win32ole ?
