@@ -84,7 +84,8 @@ class OpenstudiorubyConan(ConanFile):
         if self.options.with_zlib:
             self.requires("zlib/1.2.11@conan/stable")
             self.options["zlib"].shared = self.options.shared
-            # self.options["zlib"].minizip = True
+            # TODO: this makes the build fail on Ubuntu, I don't understand why
+            self.options["zlib"].minizip = True
 
         if self.options.with_libyaml:
             self.requires("libyaml/0.2.2@bincrafters/stable")
@@ -135,7 +136,7 @@ class OpenstudiorubyConan(ConanFile):
             if tools.os_info.is_windows:
                 url = "https://codeload.github.com/ruby/ruby/tar.gz/v{}"
                 url = url.format(self.version.replace(".", "_"))
-                sha256 = 'A3BA7160C7E0CE03865CDABA9B7C26974A8A0FC23FC953269E0463C5ACAFB7A1'
+                sha256 = 'a3ba7160c7e0ce03865cdaba9b7c26974a8a0fc23fc953269e0463c5acafb7a1'
             else:
                 #eg: https://cache.ruby-lang.org/pub/ruby/2.5/ruby-2.5.5.tar.gz
                 url = "https://cache.ruby-lang.org/pub/ruby/{0}/ruby-{1}.tar.gz"
