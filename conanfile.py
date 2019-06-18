@@ -158,6 +158,8 @@ class OpenstudiorubyConan(ConanFile):
 
         # conf_args.append("--with-static-linked-ext")
 
+        # TODO: For windows, not sure yet if needed
+        ext_libs = []
         for ext in self.extensions:
             if getattr(self.options, "with_" + ext):
                 ext_name = ext
@@ -166,16 +168,22 @@ class OpenstudiorubyConan(ConanFile):
                 ext_root_path = self.deps_cpp_info[ext_name].rootpath
                 conf_args.append("--with-{e}-dir={r}".format(e=ext,
                                                              r=ext_root_path))
+                ext_libs.append(self.deps_cpp_info[ext_name].lib_paths)
             else:
                 # conf_args.append("--without-{}".format(ext))
                 pass
 
         with tools.chdir(self._source_subfolder):
             if self.settings.compiler == "Visual Studio":
+
                 with tools.environment_append(
                     {
                         "INCLUDE": self.deps_cpp_info.include_paths,
-                        "LIB": self.deps_cpp_info.lib_paths
+                        "LIB": self.deps_cpp_info.lib_paths,
+                        "CL": "/MP",
+                        "CFLAGS": ['-wd4996', '-we4028', '-we4142', '-Zm600',
+                                   '-Zi'],
+                        "EXTLIBS": " ".join(ext_libs)
                     }):
                     if self.settings.arch == "x86":
                         target = "i686-mswin32"
@@ -192,6 +200,7 @@ class OpenstudiorubyConan(ConanFile):
                     self.output.warn("Base ruby exe: {}".format(base_exe))
                     conf_args.append("--with-baseruby={}".format(base_exe))
                     # TODO: --without-win32ole ?
+                    conf_args.append("--without-win32ole")
                     # TODO: adjust flags and such?
                     # set CL=/MP
                     # set CFLAGS=${CURRENT_CMAKE_C_FLAGS} -wd4996 -we4028 -we4142 -Zm600 -Zi
