@@ -228,6 +228,8 @@ class OpenstudiorubyConan(ConanFile):
                     except:
                         self.output.warn("======= COMPILE 2ND TIME ========")
                         self.run("nmake /k")
+
+                    # Ideally this would go into package()
                     self.run("nmake /k install-nodoc")
             else:
                 self.output.warn("conf_args = {}".format(conf_args))
@@ -238,6 +240,7 @@ class OpenstudiorubyConan(ConanFile):
 
                 autotools.configure(args=conf_args)
                 autotools.make()
+                # Ideally this would go into package()
                 autotools.install()
 
     def build(self):
@@ -258,7 +261,7 @@ class OpenstudiorubyConan(ConanFile):
         else:
             self.build_configure()
 
-    def _get_libext(self):
+    def _get_lib_ext(self):
         # We'll glob for this extension
         if self.settings.os == "Windows":
             return "lib"
@@ -270,22 +273,22 @@ class OpenstudiorubyConan(ConanFile):
         The actual creation of the package, once that it is built, is done
         here by copying artifacts from the build folder to the package folder
         """
-        self.copy("*", src="Ruby-prefix/src/Ruby-install", keep_path=True)
+        # self.copy("*", src="Ruby-prefix/src/Ruby-install", keep_path=True)
 
-        # # We'll glob for this extension
-        # libext = _get_libext(self)
+        # We'll glob for this extension
+        libext = self._get_lib_ext()
 
-        # if self.settings.os == "Windows":
-            # self.copy("encinit.c", src="enc/", dst="include/")
-        # else:
-            # # Delete the test folders
-            # tools.remove("ext/-test-")
+        if self.settings.os == "Windows":
+            self.copy("encinit.c", src="enc/", dst="include/")
+        else:
+            # Delete the test folders
+            tools.remove("ext/-test-")
 
-            # self.copy("rbconfig.rb", src="", dst='lib/ruby/2.5.0')
+            self.copy("rbconfig.rb", src="", dst='lib/ruby/2.5.0')
 
-        # # mkdir needed?
-        # self.copy("*.{}".format(libext), src="ext/", dst="lib/ext")
-        # self.copy("*.{}".format(libext), src="enc/", dst="lib/enc")
+        # mkdir needed?
+        self.copy("*.{}".format(libext), src="ext/", dst="lib/ext")
+        self.copy("*.{}".format(libext), src="enc/", dst="lib/enc")
 
     def _find_config_header(self):
         """
@@ -326,7 +329,7 @@ class OpenstudiorubyConan(ConanFile):
         so that it can work with OpenStudio
         """
         # We'll glob for this extension
-        libext = _get_libext(self)
+        libext = self._get_lib_ext()
 
         # Note: If you don't specify explicitly self.package_folder, "."
         # actually already resolves to it when package_info is run
