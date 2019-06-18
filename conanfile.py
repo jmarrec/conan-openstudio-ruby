@@ -74,8 +74,15 @@ class OpenstudiorubyConan(ConanFile):
         """
         Declare required dependencies
         """
-        self.requires("OpenSSL/1.1.0g@conan/stable")
-        self.requires("zlib/1.2.11@conan/stable")
+
+        # TODO: should I add termcap and ncurse, and gmp?
+        if self.options.with_openssl:
+            self.requires("OpenSSL/1.1.0g@conan/stable")
+            self.options["OpenSSL"].shared = self.options.shared
+
+        if self.options.with_zlib:
+            self.requires("zlib/1.2.11@conan/stable")
+            self.options["zlib"].shared = self.options.shared
 
         if self.options.with_libyaml:
             self.requires("libyaml/0.2.2@bincrafters/stable")
