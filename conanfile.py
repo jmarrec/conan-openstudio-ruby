@@ -79,23 +79,23 @@ class OpenstudiorubyConan(ConanFile):
 
         if self.options.with_libyaml:
             self.requires("libyaml/0.2.2@bincrafters/stable")
-            self.options["libyaml"].shared = False
+            self.options["libyaml"].shared = self.options.shared
             # self.options["libyaml"].fPIC = True
 
         if self.options.with_libffi:
             self.requires("libffi/3.2.1@bincrafters/stable")
-            self.options["libffi"].shared = False
+            self.options["libffi"].shared = self.options.shared
             # self.options["libffi"].fPIC = True
 
         if self.options.with_gdbm:
             self.requires("gdbm/1.18.1@jmarrec/testing")
-            self.options["gdbm"].shared = False
+            self.options["gdbm"].shared = self.options.shared
             # self.options["gdbm"].fPIC = True
             self.options["gdbm"].libgdbm_compat = True
 
         if self.options.with_readline:
             self.requires("readline/7.0@bincrafters/stable")
-            self.options["readline"].shared = False
+            self.options["readline"].shared = self.options.shared
             # self.options["readline"].fPIC = True
 
     def build_requirements(self):
@@ -132,28 +132,37 @@ class OpenstudiorubyConan(ConanFile):
 
         # The 'nodynamic' modules patch fails to build in any way on Unix,
         # with 2.5.x, so we aren't using it (at the moment anyhow)
-        tools.patch(base_path=self._source_subfolder,
-                    patch_file='Ruby.nodynamic.patch', strip=0)
+        # tools.patch(base_path=self._source_subfolder,
+        #             patch_file='Ruby.nodynamic.patch', strip=0)
 
     def build_configure(self):
         conf_args = [
             "--disable-install-doc"
         ]
-        for ext in self.extensions:
-            if getattr(self.options, "with_" + ext):
-                conf_args.append("--with-{}".format(ext))
-            else:
-                # conf_args.append("--without-{}".format(ext))
-                pass
 
         if self.options.shared:
             conf_args.append("--enable-shared")
             conf_args.append("--disable-static")
             conf_args.append("--disable-install-static-library")
         else:
-            #conf_args.append("--disable-shared")
-            #conf_args.append("--enable-static")
+            conf_args.append("--disable-shared")
+            conf_args.append("--enable-static")
             conf_args.append("--with-static-linked-ext")
+
+        # conf_args.append("--with-static-linked-ext")
+
+        for ext in self.extensions:
+            if getattr(self.options, "with_" + ext):
+                ext_name = ext
+                if ext == "openssl":
+                    ext_name = 'OpenSSL'
+                ext_root_path = self.deps_cpp_info[ext_name].rootpath
+                conf_args.append("--with-{e}-dir={r}".format(e=ext,
+                                                             r=ext_root_path))
+            else:
+                # conf_args.append("--without-{}".format(ext))
+                pass
+
 
         with tools.chdir(self._source_subfolder):
             if self.settings.compiler == "Visual Studio":
@@ -173,6 +182,7 @@ class OpenstudiorubyConan(ConanFile):
                     self.run("nmake")
                     self.run("nmake install")
             else:
+                self.output.warn("conf_args = {}".format(conf_args))
                 win_bash = tools.os_info.is_windows
                 autotools = AutoToolsBuildEnvironment(self, win_bash=win_bash)
                 # Remove our libs; Ruby doesn't like Conan's help
