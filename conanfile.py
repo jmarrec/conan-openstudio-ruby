@@ -61,7 +61,6 @@ class OpenstudiorubyConan(ConanFile):
     def _build_subfolder(self):
         return "build_subfolder"
 
-
     def configure(self):
         if (self.settings.os == "Windows" and self.settings.compiler == "Visual Studio"):
             # raise ConanInvalidConfiguration("readline is not supported for Visual Studio")
@@ -148,16 +147,16 @@ class OpenstudiorubyConan(ConanFile):
             "--disable-install-doc"
         ]
 
-        # if self.options.shared:
-            # conf_args.append("--enable-shared")
-            # conf_args.append("--disable-static")
-            # conf_args.append("--disable-install-static-library")
-        # else:
-            # conf_args.append("--disable-shared")
-            # conf_args.append("--enable-static")
-            # conf_args.append("--with-static-linked-ext")
+        if self.options.shared:
+            conf_args.append("--enable-shared")
+            conf_args.append("--disable-static")
+            conf_args.append("--disable-install-static-library")
+        else:
+            conf_args.append("--disable-shared")
+            conf_args.append("--enable-static")
+            conf_args.append("--with-static-linked-ext")
 
-        conf_args.append("--with-static-linked-ext")
+        # conf_args.append("--with-static-linked-ext")
 
         # TODO: For windows, not sure yet if needed
         ext_libs = []
