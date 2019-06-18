@@ -31,8 +31,9 @@ class OpenstudiorubyConan(ConanFile):
     )
     options = dict(
         {
-            "shared": [True, False],
-            # "fPIC": [True, False],
+            'shared': [True, False],
+            # 'fPIC': [True, False],
+            'use_local_source': [True, False],
         },
         **{"with_" + extension: [True, False] for extension in extensions}
     )
@@ -40,6 +41,7 @@ class OpenstudiorubyConan(ConanFile):
         {
             'shared': False,
             # 'fPIC': True,
+            'use_local_source': False,
             'with_libyaml': True,
             'with_libffi': True,
             'with_gdbm': True,
@@ -122,23 +124,51 @@ class OpenstudiorubyConan(ConanFile):
         """
         Download and patch the source
         """
-        # eg: https://cache.ruby-lang.org/pub/ruby/2.5/ruby-2.5.5.tar.gz
-        url = "https://cache.ruby-lang.org/pub/ruby/{0}/ruby-{1}.tar.gz"
-        url = url.format(self.version[:self.version.rfind('.')], self.version)
-        sha256 = '28a945fdf340e6ba04fc890b98648342e3cccfd6d223a48f3810572f11b2514c'
-        tools.get(url, sha256=sha256)
-        extracted_dir = "ruby-" + self.version
-        os.rename(extracted_dir, self._source_subfolder)
+        if tools.os_info.is_windows:
+            extracted_dir = "ruby-{}".format(self.version.replace(".", "_"))
+        else:
+            extracted_dir = "ruby-{}".format(self.version)
 
-        # Same as patch -p1
+        if not self.options.use_local_source:
+            self.output.info("Downloading source")
+
+            if tools.os_info.is_windows:
+                url = "https://codeload.github.com/ruby/ruby/tar.gz/v{}"
+                url = url.format(self.version.replace(".", "_"))
+                sha256 = 'A3BA7160C7E0CE03865CDABA9B7C26974A8A0FC23FC953269E0463C5ACAFB7A1'
+            else:
+                #eg: https://cache.ruby-lang.org/pub/ruby/2.5/ruby-2.5.5.tar.gz
+                url = "https://cache.ruby-lang.org/pub/ruby/{0}/ruby-{1}.tar.gz"
+                url = url.format(self.version[:self.version.rfind('.')],
+                                 self.version)
+                sha256 = '28a945fdf340e6ba04fc890b98648342e3cccfd6d223a48f3810572f11b2514c'
+
+            tools.get(url, sha256=sha256)
+        else:
+            self.output.info("Using local source")
+            if tools.os_info.is_windows:
+                tar_gz = "./src/ruby-2.5.5_win.tar.gz"
+
+            else:
+                tar_gz = "./src/ruby-2.5.5_unix.tar.gz"
+            if not os.path.exists(tar_gz):
+                raise ConanException("When using 'use_local_source=True', you "
+                                     "must place {} first".format(tar_gz))
+            tools.untargz(tar_gz,
+                          destination=".")
+
+        os.rename(extracted_dir, self._source_subfolder)
+        self.output.info("Applying Ruby.patch")
         tools.patch(base_path=self._source_subfolder,
                     patch_file="Ruby.patch", strip=0)
         if self.settings.os == 'Windows':
+            self.output.info("Applying Ruby.win.patch")
             tools.patch(base_path=self._source_subfolder,
                         patch_file='Ruby.win.patch', strip=0)
 
         # The 'nodynamic' modules patch fails to build in any way on Unix,
         # with 2.5.x, so we aren't using it (at the moment anyhow)
+        # self.output.info("Applying Ruby.nodynamic.patch")
         # tools.patch(base_path=self._source_subfolder,
         #             patch_file='Ruby.nodynamic.patch', strip=0)
 
