@@ -270,22 +270,22 @@ class OpenstudiorubyConan(ConanFile):
         The actual creation of the package, once that it is built, is done
         here by copying artifacts from the build folder to the package folder
         """
-        # self.copy("*", src="Ruby-prefix/src/Ruby-install", keep_path=True)
+        self.copy("*", src="Ruby-prefix/src/Ruby-install", keep_path=True)
 
-        # We'll glob for this extension
-        libext = _get_libext(self)
+        # # We'll glob for this extension
+        # libext = _get_libext(self)
 
-        if self.settings.os == "Windows":
-            self.copy("encinit.c", src="enc/", dst="include/")
-        else:
-            # Delete the test folders
-            tools.remove("ext/-test-")
+        # if self.settings.os == "Windows":
+            # self.copy("encinit.c", src="enc/", dst="include/")
+        # else:
+            # # Delete the test folders
+            # tools.remove("ext/-test-")
 
-            self.copy("rbconfig.rb", src="", dst='lib/ruby/2.5.0')
+            # self.copy("rbconfig.rb", src="", dst='lib/ruby/2.5.0')
 
-        # mkdir needed?
-        self.copy("*.{}".format(libext), src="ext/", dst="lib/ext")
-        self.copy("*.{}".format(libext), src="enc/", dst="lib/enc")
+        # # mkdir needed?
+        # self.copy("*.{}".format(libext), src="ext/", dst="lib/ext")
+        # self.copy("*.{}".format(libext), src="enc/", dst="lib/enc")
 
     def _find_config_header(self):
         """
