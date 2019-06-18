@@ -64,7 +64,7 @@ class OpenstudiorubyConan(ConanFile):
         return "build_subfolder"
 
     def configure(self):
-        if (self.settings.os == "Windows" and self.settings.compiler == "Visual Studio"):
+        if (tools.os_info.is_windows and self.settings.compiler == "Visual Studio"):
             # raise ConanInvalidConfiguration("readline is not supported for Visual Studio")
             self.output.warn("Readline (and therefore GDBM) will not work on "
                              "MSVC right now")
@@ -84,7 +84,7 @@ class OpenstudiorubyConan(ConanFile):
         if self.options.with_zlib:
             self.requires("zlib/1.2.11@conan/stable")
             self.options["zlib"].shared = self.options.shared
-            self.options["zlib"].minizip = True
+            # self.options["zlib"].minizip = True
 
         if self.options.with_libyaml:
             self.requires("libyaml/0.2.2@bincrafters/stable")
@@ -293,7 +293,7 @@ class OpenstudiorubyConan(ConanFile):
 
     def _get_lib_ext(self):
         # We'll glob for this extension
-        if self.settings.os == "Windows":
+        if tools.os_info.is_windows:
             return "lib"
         else:
             return "a"
@@ -308,17 +308,33 @@ class OpenstudiorubyConan(ConanFile):
         # We'll glob for this extension
         libext = self._get_lib_ext()
 
-        if self.settings.os == "Windows":
-            self.copy("encinit.c", src="enc/", dst="include/")
+        if tools.os_info.is_windows:
+            self.copy("encinit.c",
+                      src=os.path.join(self._source_subfolder, "enc"),
+                      dst="include/")
         else:
             # Delete the test folders
-            tools.remove("ext/-test-")
+            # TODO: there has to be a better way, either with a configure
+            # option or by removing the -test- folder in source
+            test_folder = os.path.abspath(
+                os.path.join(self._source_subfolder, "ext", "-test-"))
+            self.output.warn("test: {}".format(test_folder))
+            self.output.warn("current dir: {}".format(os.path.abspath(".")))
+            tools.rmdir(test_folder)
 
-            self.copy("rbconfig.rb", src="", dst='lib/ruby/2.5.0')
+            self.copy("rbconfig.rb",
+                      src=self._source_subfolder,
+                      dst='lib/ruby/2.5.0')
 
-        # mkdir needed?
-        self.copy("*.{}".format(libext), src="ext/", dst="lib/ext")
-        self.copy("*.{}".format(libext), src="enc/", dst="lib/enc")
+        # TODO might want to pass keep_path=False to place them directly under
+        # the dst dir, that is ext/bigdecimal.a instead of current
+        # ext/bigdecimal/bigdecimal.a
+        self.copy("*.{}".format(libext),
+                  src=os.path.join(self._source_subfolder, "ext"),
+                  dst="lib/ext")
+        self.copy("*.{}".format(libext),
+                  src=os.path.join(self._source_subfolder, "enc"),
+                  dst="lib/enc")
 
     def _find_config_header(self):
         """
@@ -387,7 +403,7 @@ class OpenstudiorubyConan(ConanFile):
             raise ConanException("Didn't find the libraries!")
 
         # Remove the non-static VS libs
-        if self.settings.os == "Windows":
+        if tools.os_info.is_windows:
             non_stat_re = re.compile(r'x64-vcruntime[0-9]+-ruby[0-9]+\.lib')
             exclude_libs = [x for x in libs
                             if non_stat_re.search(x)]
