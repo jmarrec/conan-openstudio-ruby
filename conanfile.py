@@ -170,11 +170,13 @@ class OpenstudiorubyConan(ConanFile):
                 # conf_args.append("--without-{}".format(ext))
                 pass
 
-
         with tools.chdir(self._source_subfolder):
             if self.settings.compiler == "Visual Studio":
-                with tools.environment_append({"INCLUDE": self.deps_cpp_info.include_paths,
-                                               "LIB": self.deps_cpp_info.lib_paths}):
+                with tools.environment_append(
+                    {
+                        "INCLUDE": self.deps_cpp_info.include_paths,
+                        "LIB": self.deps_cpp_info.lib_paths
+                    }):
                     if self.settings.arch == "x86":
                         target = "i686-mswin32"
                     elif self.settings.arch == "x86_64":
@@ -183,11 +185,21 @@ class OpenstudiorubyConan(ConanFile):
                         raise ConanException("Invalid arch")
                     conf_args.append('--prefix="{}"'.format(self.package_folder))
                     conf_args.append("--target={}".format(target))
+                    base_exe = "{}/bin/ruby.exe".format(
+                        self.deps_cpp_info['ruby_installer'].rootpath)
+                    self.output.warn("Base ruby exe: {}".format(base_exe))
+                    conf_args.append("--with-baseruby={}".format(base_exe))
+                    # TODO: --without-win32ole ?
+                    # TODO: adjust flags and such?
+                    # set CL=/MP
+                    # set CFLAGS=${CURRENT_CMAKE_C_FLAGS} -wd4996 -we4028 -we4142 -Zm600 -Zi
+                    # set EXTLIBS=%LIBFFI_LIBS% %OPENSSL_LIBS% %ZLIB_LIBS% %LIBYAML_LIBS%
+                    self.output.warn("conf_args = {}".format(conf_args))
                     self.run("{c} {args}".format(
                         c=os.path.join("win32", "configure.bat"),
                         args=" ".join(conf_args)))
-                    self.run("nmake")
-                    self.run("nmake install")
+                    self.run("nmake /k")
+                    self.run("nmake /k install-nodoc")
             else:
                 self.output.warn("conf_args = {}".format(conf_args))
                 win_bash = tools.os_info.is_windows
