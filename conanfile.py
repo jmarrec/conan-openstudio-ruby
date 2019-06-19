@@ -75,17 +75,23 @@ class OpenstudiorubyConan(ConanFile):
         """
         Declare required dependencies
         """
+        if self.options.with_zlib:
+            # TODO: temp until
+            # https://github.com/conan-community/conan-zlib/pull/82 is merged
+            # self.requires("zlib/1.2.11@jmarrec/testing", override=True)
+            # I'm getting override problems with ruby_installer if I use my
+            # zlib, so for now I'm shadowing the zlib/1.2.11@conan/stable by
+            # building it locally
+            self.requires("zlib/1.2.11@conan/stable")
+
+            self.options["zlib"].shared = self.options.shared
+            # TODO: this makes the build fail on Ubuntu, I don't understand why
+            self.options["zlib"].minizip = True
 
         # TODO: should I add termcap and ncurse, and gmp?
         if self.options.with_openssl:
             self.requires("OpenSSL/1.1.0g@conan/stable")
             self.options["OpenSSL"].shared = self.options.shared
-
-        if self.options.with_zlib:
-            self.requires("zlib/1.2.11@conan/stable")
-            self.options["zlib"].shared = self.options.shared
-            # TODO: this makes the build fail on Ubuntu, I don't understand why
-            self.options["zlib"].minizip = True
 
         if self.options.with_libyaml:
             self.requires("libyaml/0.2.2@bincrafters/stable")
