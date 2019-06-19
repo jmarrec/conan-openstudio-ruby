@@ -1,1 +1,3 @@
 build/
+# During development, place the content of the unpacked ruby tar.gz in here (ruby-2.5.5) to avoid redownloading all the time
+src/
